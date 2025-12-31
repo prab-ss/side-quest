@@ -1,0 +1,204 @@
+
+.App {
+  display: flex;
+  justify-content: center;  /* centers horizontally */
+  align-items: center;      /* centers vertically */
+  height: 100vh;
+  width: 100vw;             /* make full width */
+  background-color: #000000;   /* black like the image */
+  font-family: 'Georgia', serif;
+}
+
+.note p {
+  margin-top: 85px; /* space from top */
+  font-size: 2.5rem;
+  color: #bdbdbd;
+  font-family: "Atkinson Hyperlegible Mono", monospace;
+  font-weight: 400;
+  font-style: normal;
+  text-align: center;
+}
+
+.note button {
+  display: block; /* makes the button take up full width */
+  margin: 5px auto; /* centers the button horizontally */
+  padding: 10px 20px; /* vertical and horizontal padding */
+  font-size: 1.2rem;
+  background-color: #ffffff;
+  color:  #1c1c1c;
+  border: none; /* no border */
+  border-radius: 5px; /* rounded corners */
+  cursor: pointer;
+}
+
+.cassette-page {
+  width: 100vw;
+  height: 100vh;
+  background: black;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.cassette-page img {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+}
+
+/* back button (top left) */
+.back-button {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: transparent;
+  color: white;
+  border: 1px solid white;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+/* container for bottom buttons */
+.cassette-buttons {
+  position: absolute;
+  bottom: 170px;
+  display: flex;
+  gap: 16px;
+}
+
+/* buttons styling */
+.cassette-buttons button {
+  padding: 10px 18px;
+  font-size: 1rem;
+  background-color: white;
+  color: black;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+/* modal overlay */
+.add-quest-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.add-quest-box {
+  position: relative;
+  background: #f8ebeb;
+  padding: 20px;
+  width: 320px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* center text in quest modal */
+.add-quest-box p {
+  text-align: center;
+  margin: 0; /* optional, remove default spacing */
+}
+
+
+.add-quest-box textarea { 
+  resize: none;
+  height: 100px;
+  padding: 10px;
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: space-between;
+}
+
+.modal-buttons button {
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.note button,
+.cassette-buttons button,
+.back-button {
+  transition: all 0.2s ease-in-out;
+}
+
+.note button:hover,
+.cassette-buttons button:hover {
+  transform: scale(1.05);
+  background-color: #f0f0f0;
+}
+
+.login-input {
+  width: 240px;
+  padding: 10px;
+  margin: 6px auto;
+  display: block;
+  font-size: 1rem;
+  border-radius: 4px;
+  border: none;
+}
+.top-right-button {
+  background: transparent;
+  color: white;
+  border: 1px solid white;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  transition: all 0.2s ease-in-out;
+}
+
+.top-right-button:hover {
+  transform: scale(1.05);
+}
+/* change font color of To Do quests */
+.add-quest-box ul,
+.add-quest-box li {
+  color: #060606; /* change to any color you like */
+}
+/* To Do modal title */
+.add-quest-box h3 {
+  color: #000000; /*change to any color you like */
+  margin-bottom: 12px;
+  font-size: 1.3rem;
+  text-align: center;
+}
+.add-quest-box {
+  background: #f0f0f0; /* background color */
+}
+/* Fix file input text color inside Complete Quest modal */
+.todo-box input[type="file"] {
+  color: #000; /* changes 'No file chosen' text */
+}
+/* Close (X) button for quest modal */
+.close-button {
+  position: absolute;
+  top: 3px; 
+  right: 3px;
+  background: transparent;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  color: #000;
+  padding: 6px 12px; /* optional, if you want consistent padding */
+  transition: all 0.2s ease-in-out; /* smooth hover/active transitions */
+}
+
+.close-button:hover {
+  opacity: 0.6; /* only hover-specific property */
+   transform: scale(1.19); /* enlarge on hover */
+}
+
+.close-button:active {
+  border: 1px solid white; /* only active-specific property */
+  color: rgb(6, 6, 6);      /* change text color on click */
+  font-size: 0.9rem;        /* slightly smaller text when pressed */
+}
+
