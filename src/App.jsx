@@ -17,7 +17,10 @@ function App() {
   const [expandedMemory, setExpandedMemory] = useState(null);
   const [editingMemory, setEditingMemory] = useState(null); // tracks memory being edited
   const [videoReady, setVideoReady] = useState(false);
-  const [memories, setMemories] = useState([]);
+const [memories, setMemories] = useState(() => {
+  const saved = localStorage.getItem("memories");
+  return saved ? JSON.parse(saved) : [];
+});
   const [showMemories, setShowMemories] = useState(false);
   const [selectedQuest, setSelectedQuest] = useState(null);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
@@ -37,6 +40,10 @@ function App() {
   const [currentQuest, setCurrentQuest] = useState("");
   const [showQuestModal, setShowQuestModal] = useState(false);
   const [spinning, setSpinning] = useState(false);
+  
+  useEffect(() => {
+  localStorage.setItem("memories", JSON.stringify(memories));
+}, [memories]);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (currentUser) => {
