@@ -20,36 +20,38 @@ function App() {
   const [expandedMemory, setExpandedMemory] = useState(null);
   const [editingMemory, setEditingMemory] = useState(null);
   const [videoReady, setVideoReady] = useState(false);
-  const [memories, setMemories] = useState(() => {
-    const saved = localStorage.getItem("memories");
-    return saved ? JSON.parse(saved) : [];
-  });
+
+  const [memories, setMemories] = useState([]);
+  const [completedQuests, setCompletedQuests] = useState([]);
+  const [acceptedQuests, setAcceptedQuests] = useState([]);
+  const [quests, setQuests] = useState([]);
+
   const [showMemories, setShowMemories] = useState(false);
   const [selectedQuest, setSelectedQuest] = useState(null);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [reflectionText, setReflectionText] = useState("");
   const [reflectionMedia, setReflectionMedia] = useState(null);
-  const [completedQuests, setCompletedQuests] = useState([]);
-  const [acceptedQuests, setAcceptedQuests] = useState([]);
   const [showToDo, setShowToDo] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [showCassette, setShowCassette] = useState(false);
-  const [quests, setQuests] = useState([]);
   const [showAddQuest, setShowAddQuest] = useState(false);
   const [newQuest, setNewQuest] = useState("");
   const [currentQuest, setCurrentQuest] = useState("");
   const [showQuestModal, setShowQuestModal] = useState(false);
   const [spinning, setSpinning] = useState(false);
 
-  // Single Auth Listener + Fetch Quests
+  // Single Auth Listener + Fetch User Data
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
         setUser(null);
         setQuests([]);
+        setAcceptedQuests([]);
+        setCompletedQuests([]);
+        setMemories([]);
         return;
       }
 
@@ -82,7 +84,7 @@ function App() {
     return () => unsubscribe();
   }, []);
 
-  // Save memories to localStorage
+  // Save memories to localStorage for quick access
   useEffect(() => {
     localStorage.setItem("memories", JSON.stringify(memories));
   }, [memories]);
@@ -264,10 +266,21 @@ function App() {
               <div className="modal-buttons" style={{ justifyContent: "center", gap: "12px" }}>
                 <button
                   style={{ backgroundColor: "#101010ff", color: "white" }}
-                  onClick={() => {
-                    setAcceptedQuests([...acceptedQuests, currentQuest]);
-                    setQuests(quests.filter((q) => q !== currentQuest));
+                  onClick={async () => {
+                    const updatedAccepted = [...acceptedQuests, currentQuest];
+                    const updatedQuests = quests.filter((q) => q !== currentQuest);
+
+                    setAcceptedQuests(updatedAccepted);
+                    setQuests(updatedQuests);
                     setShowQuestModal(false);
+
+                    if (user) {
+                      const userRef = doc(db, "users", user.uid);
+                      await updateDoc(userRef, {
+                        quests: updatedQuests,
+                        acceptedQuests: updatedAccepted,
+                      });
+                    }
                   }}
                 >
                   Accept
@@ -333,7 +346,7 @@ function App() {
               />
               <div className="modal-buttons">
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     const completedQuest = {
                       quest: selectedQuest,
                       reflection: reflectionText,
@@ -341,15 +354,28 @@ function App() {
                       completedAt: new Date(),
                     };
 
-                    setCompletedQuests([...completedQuests, completedQuest]);
-                    setAcceptedQuests(acceptedQuests.filter((q) => q !== selectedQuest));
-                    setMemories((prev) => [...prev, completedQuest]);
+                    const updatedCompleted = [...completedQuests, completedQuest];
+                    const updatedAccepted = acceptedQuests.filter((q) => q !== selectedQuest);
+                    const updatedMemories = [...memories, completedQuest];
+
+                    setCompletedQuests(updatedCompleted);
+                    setAcceptedQuests(updatedAccepted);
+                    setMemories(updatedMemories);
 
                     setReflectionText("");
                     setReflectionMedia(null);
                     setSelectedQuest(null);
                     setShowCompleteModal(false);
                     setShowToDo(false);
+
+                    if (user) {
+                      const userRef = doc(db, "users", user.uid);
+                      await updateDoc(userRef, {
+                        acceptedQuests: updatedAccepted,
+                        completedQuests: updatedCompleted,
+                        memories: updatedMemories,
+                      });
+                    }
                   }}
                 >
                   Complete
