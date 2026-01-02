@@ -10,6 +10,11 @@ import {
   onAuthStateChanged,
   signOut,
 } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { auth } from "./firebase";
+import { db } from "./firebase";
+
 
 function App() {
   const [isSignup, setIsSignup] = useState(false);
@@ -41,6 +46,37 @@ const [memories, setMemories] = useState(() => {
   const [showQuestModal, setShowQuestModal] = useState(false);
   const [spinning, setSpinning] = useState(false);
   
+  useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    if (!currentUser) {
+      setUser(null);
+      setQuests([]);
+      return;
+    }
+
+    setUser(currentUser);
+
+    const userRef = doc(db, "users", currentUser.uid);
+    const snap = await getDoc(userRef);
+
+    if (snap.exists()) {
+      const data = snap.data();
+      setQuests(data.quests || []);
+    } else {
+      // first time user → create doc
+      await setDoc(userRef, {
+        quests: [],
+        acceptedQuests: [],
+        completedQuests: [],
+        memories: []
+      });
+      setQuests([]);
+    }
+  });
+
+  return () => unsubscribe();
+}, []);
+
   useEffect(() => {
   localStorage.setItem("memories", JSON.stringify(memories));
 }, [memories]);
@@ -336,16 +372,25 @@ const [memories, setMemories] = useState(() => {
                 onChange={(e) => setNewQuest(e.target.value)}
               />
               <div className="modal-buttons">
-                <button
-                  onClick={() => {
-                    if (newQuest.trim() === "") return;
-                    setQuests([...quests, newQuest]);
-                    setNewQuest("");
-                    setShowAddQuest(false);
-                  }}
-                >
-                  Save
-                </button>
+               <button
+  onClick={async () => {
+    if (newQuest.trim() === "" || !user) return;
+
+    const updatedQuests = [...quests, newQuest];
+    setQuests(updatedQuests);
+
+    const userRef = doc(db, "users", user.uid);
+    await updateDoc(userRef, {
+      quests: updatedQuests,
+    });
+
+    setNewQuest("");
+    setShowAddQuest(false);
+  }}
+>
+  Save
+</button>
+
                 <button onClick={() => setShowAddQuest(false)}>Cancel</button>
               </div>
             </div>
