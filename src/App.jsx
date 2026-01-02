@@ -3,29 +3,27 @@ import "./App.css";
 import cassette from "./assets/cassette.png";
 import cassetteSpin from "./assets/cassette-spin.mp4";
 import memoriesBg from "./assets/memories-bg.mp4";
-import { auth } from "./firebase";
+
+// Firebase
+import { auth, db } from "./firebase";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   signOut,
 } from "firebase/auth";
-import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { auth } from "./firebase";
-import { db } from "./firebase";
-
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 
 function App() {
   const [isSignup, setIsSignup] = useState(false);
   const [user, setUser] = useState(null);
   const [expandedMemory, setExpandedMemory] = useState(null);
-  const [editingMemory, setEditingMemory] = useState(null); // tracks memory being edited
+  const [editingMemory, setEditingMemory] = useState(null);
   const [videoReady, setVideoReady] = useState(false);
-const [memories, setMemories] = useState(() => {
-  const saved = localStorage.getItem("memories");
-  return saved ? JSON.parse(saved) : [];
-});
+  const [memories, setMemories] = useState(() => {
+    const saved = localStorage.getItem("memories");
+    return saved ? JSON.parse(saved) : [];
+  });
   const [showMemories, setShowMemories] = useState(false);
   const [selectedQuest, setSelectedQuest] = useState(null);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
@@ -45,48 +43,49 @@ const [memories, setMemories] = useState(() => {
   const [currentQuest, setCurrentQuest] = useState("");
   const [showQuestModal, setShowQuestModal] = useState(false);
   const [spinning, setSpinning] = useState(false);
-  
+
+  // Single Auth Listener + Fetch Quests
   useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-    if (!currentUser) {
-      setUser(null);
-      setQuests([]);
-      return;
-    }
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (!currentUser) {
+        setUser(null);
+        setQuests([]);
+        return;
+      }
 
-    setUser(currentUser);
-
-    const userRef = doc(db, "users", currentUser.uid);
-    const snap = await getDoc(userRef);
-
-    if (snap.exists()) {
-      const data = snap.data();
-      setQuests(data.quests || []);
-    } else {
-      // first time user → create doc
-      await setDoc(userRef, {
-        quests: [],
-        acceptedQuests: [],
-        completedQuests: [],
-        memories: []
-      });
-      setQuests([]);
-    }
-  });
-
-  return () => unsubscribe();
-}, []);
-
-  useEffect(() => {
-  localStorage.setItem("memories", JSON.stringify(memories));
-}, [memories]);
-
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
+
+      const userRef = doc(db, "users", currentUser.uid);
+      const snap = await getDoc(userRef);
+
+      if (snap.exists()) {
+        const data = snap.data();
+        setQuests(data.quests || []);
+        setAcceptedQuests(data.acceptedQuests || []);
+        setCompletedQuests(data.completedQuests || []);
+        setMemories(data.memories || []);
+      } else {
+        // first time user → create doc
+        await setDoc(userRef, {
+          quests: [],
+          acceptedQuests: [],
+          completedQuests: [],
+          memories: [],
+        });
+        setQuests([]);
+        setAcceptedQuests([]);
+        setCompletedQuests([]);
+        setMemories([]);
+      }
     });
-    return () => unsub();
+
+    return () => unsubscribe();
   }, []);
+
+  // Save memories to localStorage
+  useEffect(() => {
+    localStorage.setItem("memories", JSON.stringify(memories));
+  }, [memories]);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -344,7 +343,7 @@ const [memories, setMemories] = useState(() => {
 
                     setCompletedQuests([...completedQuests, completedQuest]);
                     setAcceptedQuests(acceptedQuests.filter((q) => q !== selectedQuest));
-                    setMemories(prev => [...prev, completedQuest]);
+                    setMemories((prev) => [...prev, completedQuest]);
 
                     setReflectionText("");
                     setReflectionMedia(null);
@@ -372,24 +371,24 @@ const [memories, setMemories] = useState(() => {
                 onChange={(e) => setNewQuest(e.target.value)}
               />
               <div className="modal-buttons">
-               <button
-  onClick={async () => {
-    if (newQuest.trim() === "" || !user) return;
+                <button
+                  onClick={async () => {
+                    if (newQuest.trim() === "" || !user) return;
 
-    const updatedQuests = [...quests, newQuest];
-    setQuests(updatedQuests);
+                    const updatedQuests = [...quests, newQuest];
+                    setQuests(updatedQuests);
 
-    const userRef = doc(db, "users", user.uid);
-    await updateDoc(userRef, {
-      quests: updatedQuests,
-    });
+                    const userRef = doc(db, "users", user.uid);
+                    await updateDoc(userRef, {
+                      quests: updatedQuests,
+                    });
 
-    setNewQuest("");
-    setShowAddQuest(false);
-  }}
->
-  Save
-</button>
+                    setNewQuest("");
+                    setShowAddQuest(false);
+                  }}
+                >
+                  Save
+                </button>
 
                 <button onClick={() => setShowAddQuest(false)}>Cancel</button>
               </div>
@@ -475,7 +474,7 @@ const [memories, setMemories] = useState(() => {
                               color: "#040404ff",
                             }}
                             onClick={(e) => {
-                              e.stopPropagation(); // prevent toggle
+                              e.stopPropagation();
                               setEditingMemory(editingMemory === i ? null : i);
                             }}
                           >
@@ -524,7 +523,7 @@ const [memories, setMemories] = useState(() => {
                                       fontSize: "0.8rem",
                                     }}
                                     onClick={(e) => {
-                                     e.stopPropagation();
+                                      e.stopPropagation();
                                       const updatedMemories = [...memories];
                                       updatedMemories[i].media.splice(j, 1);
                                       setMemories(updatedMemories);
@@ -541,14 +540,14 @@ const [memories, setMemories] = useState(() => {
                                 multiple
                                 onClick={(e) => e.stopPropagation()}
                                 onChange={(e) => {
-                                   if (!e.target.files || e.target.files.length === 0) return; 
-                                     const updatedMemories = [...memories];
-                                     updatedMemories[i].media = [
-                                      ...(updatedMemories[i].media || []),
-                                      ...Array.from(e.target.files),
-                                      ];
-                                      setMemories(updatedMemories);
-                                     }}
+                                  if (!e.target.files || e.target.files.length === 0) return;
+                                  const updatedMemories = [...memories];
+                                  updatedMemories[i].media = [
+                                    ...(updatedMemories[i].media || []),
+                                    ...Array.from(e.target.files),
+                                  ];
+                                  setMemories(updatedMemories);
+                                }}
                               />
                             </>
                           ) : (
