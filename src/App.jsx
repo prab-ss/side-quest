@@ -476,176 +476,182 @@ function App() {
               ) : (
                 <div className="memories-list">
                   {memories.map((mem, i) => (
-  <div
-    key={i}
-    className="memory-item"
-    onClick={() => setExpandedMemory(expandedMemory === i ? null : i)}
-    style={{
-      cursor: "pointer",
-      marginBottom: "14px",
-      padding: "12px",
-      borderRadius: "10px",
-      background: "#f0f0f0",
-      position: "relative",
-    }}
-  >
-    <p style={{ fontSize: "0.85rem", opacity: 0.6, color: "#090909ff" }}>
-      {mem.completedAt ? formatDate(mem.completedAt) : "Completed"}
-    </p>
-    <p style={{ fontWeight: "bold", color: "#070707ff" }}>{mem.quest}</p>
+                    <div
+                      key={i}
+                      className="memory-item"
+                      onClick={() => setExpandedMemory(expandedMemory === i ? null : i)}
+                      style={{
+                        cursor: "pointer",
+                        marginBottom: "14px",
+                        padding: "12px",
+                        borderRadius: "10px",
+                        background: "#f0f0f0",
+                        position: "relative",
+                      }}
+                    >
+                      <p style={{ fontSize: "0.85rem", opacity: 0.6, color: "#090909ff" }}>
+                        {mem.completedAt ? formatDate(mem.completedAt) : "Completed"}
+                      </p>
+                      <p style={{ fontWeight: "bold", color: "#070707ff" }}>{mem.quest}</p>
 
-    {expandedMemory === i && (
-      <div style={{ marginTop: "8px", position: "relative" }}>
-        {/* Edit icon */}
-        <button
-          style={{
-            position: "absolute",
-            top: -65,
-            right: -5,
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            fontSize: "1rem",
-            padding: "4px",
-            color: "#040404ff",
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            setEditingMemory(editingMemory === i ? null : i);
-          }}
-        >
-          {editingMemory === i ? "Done" : "✎"}
-        </button>
+                      {expandedMemory === i && (
+                        <div style={{ marginTop: "8px", position: "relative" }}>
+                          {/* Edit icon */}
+                          <button
+                            style={{
+                              position: "absolute",
+                              top: -65,
+                              right: -5,
+                              background: "transparent",
+                              border: "none",
+                              cursor: "pointer",
+                              fontSize: "1rem",
+                              padding: "4px",
+                              color: "#040404ff",
+                            }}
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (editingMemory === i) {
+                                // Save edits to Firestore
+                                setEditingMemory(null);
+                                if (user) {
+                                  const userRef = doc(db, "users", user.uid);
+                                  await updateDoc(userRef, { memories });
+                                }
+                              } else {
+                                setEditingMemory(i);
+                              }
+                            }}
+                          >
+                            {editingMemory === i ? "Done" : "✎"}
+                          </button>
 
-        {/* EDIT MODE */}
-        {editingMemory === i ? (
-          <>
-            <textarea
-              value={mem.reflection || ""}
-              onChange={(e) => {
-                const updatedMemories = [...memories];
-                updatedMemories[i].reflection = e.target.value;
-                setMemories(updatedMemories);
-              }}
-              style={{ width: "100%", borderRadius: "8px" }}
-            />
+                          {editingMemory === i ? (
+                            <>
+                              {/* Edit reflection */}
+                              <textarea
+                                value={mem.reflection || ""}
+                                onChange={(e) => {
+                                  const updatedMemories = [...memories];
+                                  updatedMemories[i].reflection = e.target.value;
+                                  setMemories(updatedMemories);
+                                }}
+                                style={{ width: "100%", borderRadius: "8px" }}
+                              />
 
-            {/* Existing media */}
-            {mem.media?.map((file, j) => (
-              <div key={j} style={{ marginTop: "6px", position: "relative" }}>
-                {file.url ? (
-                  file.type.startsWith("image") ? (
-                    <img
-                      src={file.url}
-                      alt=""
-                      style={{ width: "100%", borderRadius: "8px" }}
-                    />
-                  ) : (
-                    <video
-                      src={file.url}
-                      controls
-                      style={{ width: "100%", borderRadius: "8px" }}
-                    />
-                  )
-                ) : file.type.startsWith("image") ? (
-                  <img
-                    src={URL.createObjectURL(file)}
-                    alt=""
-                    style={{ width: "100%", borderRadius: "8px" }}
-                  />
-                ) : (
-                  <video
-                    src={URL.createObjectURL(file)}
-                    controls
-                    style={{ width: "100%", borderRadius: "8px" }}
-                  />
-                )}
+                              {/* Existing media with delete */}
+                              {mem.media?.map((file, j) => (
+                                <div key={j} style={{ marginTop: "6px", position: "relative" }}>
+                                  {file.url ? (
+                                    file.type.startsWith("image") ? (
+                                      <img
+                                        src={file.url}
+                                        alt=""
+                                        style={{ width: "100%", borderRadius: "8px" }}
+                                      />
+                                    ) : (
+                                      <video
+                                        src={file.url}
+                                        controls
+                                        style={{ width: "100%", borderRadius: "8px" }}
+                                      />
+                                    )
+                                  ) : file.type.startsWith("image") ? (
+                                    <img
+                                      src={URL.createObjectURL(file)}
+                                      alt=""
+                                      style={{ width: "100%", borderRadius: "8px" }}
+                                    />
+                                  ) : (
+                                    <video
+                                      src={URL.createObjectURL(file)}
+                                      controls
+                                      style={{ width: "100%", borderRadius: "8px" }}
+                                    />
+                                  )}
 
-                {/* Delete button */}
-                <button
-                  style={{
-                    position: "absolute",
-                    top: 2,
-                    right: 2,
-                    background: "#f0f0f0",
-                    color: "black",
-                    border: "black 1px solid",
-                    cursor: "pointer",
-                    fontSize: "0.8rem",
-                    padding: "3px",
-                    position: "absolute",
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const updatedMemories = [...memories];
-                    updatedMemories[i].media.splice(j, 1);
-                    setMemories(updatedMemories);
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
+                                  <button
+                                    style={{
+                                      position: "absolute",
+                                      top: 2,
+                                      right: 2,
+                                      background: "#f0f0f0",
+                                      color: "black",
+                                      border: "black 1px solid",
+                                      cursor: "pointer",
+                                      fontSize: "0.8rem",
+                                      padding: "3px",
+                                    }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const updatedMemories = [...memories];
+                                      updatedMemories[i].media.splice(j, 1);
+                                      setMemories(updatedMemories);
+                                    }}
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ))}
 
-            {/* Add more media */}
-            <input
-              type="file"
-              accept="image/*,video/*"
-              multiple
-              onClick={(e) => e.stopPropagation()}
-              onChange={(e) => {
-                if (!e.target.files || e.target.files.length === 0) return;
-                const updatedMemories = [...memories];
-                updatedMemories[i].media = [
-                  ...(updatedMemories[i].media || []),
-                  ...Array.from(e.target.files),
-                ];
-                setMemories(updatedMemories);
-              }}
-            />
-          </>
-        ) : (
-          /* VIEW MODE */
-          <>
-            {mem.reflection && <p style={{ color: "#040404ff" }}>{mem.reflection}</p>}
-            {mem.media?.map((file, j) => (
-              <div key={j} style={{ marginTop: "6px" }}>
-                {file.url ? (
-                  file.type.startsWith("image") ? (
-                    <img
-                      src={file.url}
-                      alt=""
-                      style={{ width: "100%", borderRadius: "8px" }}
-                    />
-                  ) : (
-                    <video
-                      src={file.url}
-                      controls
-                      style={{ width: "100%", borderRadius: "8px" }}
-                    />
-                  )
-                ) : file.type.startsWith("image") ? (
-                  <img
-                    src={URL.createObjectURL(file)}
-                    alt=""
-                    style={{ width: "100%", borderRadius: "8px" }}
-                  />
-                ) : (
-                  <video
-                    src={URL.createObjectURL(file)}
-                    controls
-                    style={{ width: "100%", borderRadius: "8px" }}
-                  />
-                )}
-              </div>
-            ))}
-          </>
-        )}
-      </div>
-    )}
-  </div>
-))}
-
+                              {/* Add new media */}
+                              <input
+                                type="file"
+                                accept="image/*,video/*"
+                                multiple
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) => {
+                                  if (!e.target.files || e.target.files.length === 0) return;
+                                  const updatedMemories = [...memories];
+                                  updatedMemories[i].media = [
+                                    ...(updatedMemories[i].media || []),
+                                    ...Array.from(e.target.files),
+                                  ];
+                                  setMemories(updatedMemories);
+                                }}
+                              />
+                            </>
+                          ) : (
+                            <>
+                              {/* VIEW MODE */}
+                              {mem.reflection && <p style={{ color: "#040404ff" }}>{mem.reflection}</p>}
+                              {mem.media?.map((file, j) => (
+                                <div key={j} style={{ marginTop: "6px" }}>
+                                  {file.url ? (
+                                    file.type.startsWith("image") ? (
+                                      <img
+                                        src={file.url}
+                                        alt=""
+                                        style={{ width: "100%", borderRadius: "8px" }}
+                                      />
+                                    ) : (
+                                      <video
+                                        src={file.url}
+                                        controls
+                                        style={{ width: "100%", borderRadius: "8px" }}
+                                      />
+                                    )
+                                  ) : file.type.startsWith("image") ? (
+                                    <img
+                                      src={URL.createObjectURL(file)}
+                                      alt=""
+                                      style={{ width: "100%", borderRadius: "8px" }}
+                                    />
+                                  ) : (
+                                    <video
+                                      src={URL.createObjectURL(file)}
+                                      controls
+                                      style={{ width: "100%", borderRadius: "8px" }}
+                                    />
+                                  )}
+                                </div>
+                              ))}
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
 
