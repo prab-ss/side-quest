@@ -5,7 +5,7 @@ import cassetteSpin from "./assets/cassette-spin.mp4";
 import memoriesBg from "./assets/memories-bg.mp4";
 
 // Firebase
-import { auth, db } from "./firebase";
+import { auth, db, storage } from "./firebase";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -13,6 +13,7 @@ import {
   signOut,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 function App() {
   const [isSignup, setIsSignup] = useState(false);
@@ -43,7 +44,7 @@ function App() {
   const [showQuestModal, setShowQuestModal] = useState(false);
   const [spinning, setSpinning] = useState(false);
 
-  // Single Auth Listener + Fetch User Data
+  // Auth + fetch user data
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
@@ -67,7 +68,6 @@ function App() {
         setCompletedQuests(data.completedQuests || []);
         setMemories(data.memories || []);
       } else {
-        // first time user → create doc
         await setDoc(userRef, {
           quests: [],
           acceptedQuests: [],
@@ -83,11 +83,6 @@ function App() {
 
     return () => unsubscribe();
   }, []);
-
-  // Save memories to localStorage for quick access
-  useEffect(() => {
-    localStorage.setItem("memories", JSON.stringify(memories));
-  }, [memories]);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -347,13 +342,31 @@ function App() {
               <div className="modal-buttons">
                 <button
                   onClick={async () => {
+                    if (!user) return;
+
+                    // 1️⃣ Upload media to Storage
+                    let mediaUrls = [];
+                    if (reflectionMedia && reflectionMedia.length > 0) {
+                      for (let file of reflectionMedia) {
+                        const storageRef = ref(
+                          storage,
+                          `users/${user.uid}/memories/${Date.now()}_${file.name}`
+                        );
+                        await uploadBytes(storageRef, file);
+                        const url = await getDownloadURL(storageRef);
+                        mediaUrls.push({ url, type: file.type });
+                      }
+                    }
+
+                    // 2️⃣ Create completed quest object
                     const completedQuest = {
                       quest: selectedQuest,
                       reflection: reflectionText,
-                      media: reflectionMedia,
+                      media: mediaUrls,
                       completedAt: new Date(),
                     };
 
+                    // 3️⃣ Update states
                     const updatedCompleted = [...completedQuests, completedQuest];
                     const updatedAccepted = acceptedQuests.filter((q) => q !== selectedQuest);
                     const updatedMemories = [...memories, completedQuest];
@@ -368,14 +381,13 @@ function App() {
                     setShowCompleteModal(false);
                     setShowToDo(false);
 
-                    if (user) {
-                      const userRef = doc(db, "users", user.uid);
-                      await updateDoc(userRef, {
-                        acceptedQuests: updatedAccepted,
-                        completedQuests: updatedCompleted,
-                        memories: updatedMemories,
-                      });
-                    }
+                    // 4️⃣ Update Firestore
+                    const userRef = doc(db, "users", user.uid);
+                    await updateDoc(userRef, {
+                      acceptedQuests: updatedAccepted,
+                      completedQuests: updatedCompleted,
+                      memories: updatedMemories,
+                    });
                   }}
                 >
                   Complete
@@ -486,118 +498,27 @@ function App() {
 
                       {expandedMemory === i && (
                         <div style={{ marginTop: "8px", position: "relative" }}>
-                          {/* Edit icon */}
-                          <button
-                            style={{
-                              position: "absolute",
-                              top: -65,
-                              right: -5,
-                              background: "transparent",
-                              border: "none",
-                              cursor: "pointer",
-                              fontSize: "1rem",
-                              padding: "4px",
-                              color: "#040404ff",
-                            }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingMemory(editingMemory === i ? null : i);
-                            }}
-                          >
-                            {editingMemory === i ? "Done" : "✎"}
-                          </button>
+                          {/* Reflection */}
+                          {mem.reflection && <p style={{ color: "#040404ff" }}>{mem.reflection}</p>}
 
-                          {editingMemory === i ? (
-                            <>
-                              <textarea
-                                value={mem.reflection || ""}
-                                onChange={(e) => {
-                                  const updatedMemories = [...memories];
-                                  updatedMemories[i].reflection = e.target.value;
-                                  setMemories(updatedMemories);
-                                }}
-                                style={{ width: "100%", borderRadius: "8px" }}
-                              />
-
-                              {mem.media?.map((file, j) => (
-                                <div key={j} style={{ marginTop: "6px", position: "relative" }}>
-                                  {file.type.startsWith("image") ? (
-                                    <img
-                                      src={URL.createObjectURL(file)}
-                                      alt=""
-                                      style={{ width: "100%", borderRadius: "8px" }}
-                                    />
-                                  ) : (
-                                    <video
-                                      src={URL.createObjectURL(file)}
-                                      controls
-                                      style={{ width: "100%", borderRadius: "8px" }}
-                                    />
-                                  )}
-                                  <button
-                                    style={{
-                                      position: "absolute",
-                                      top: 2,
-                                      right: 2,
-                                      background: "red",
-                                      color: "white",
-                                      border: "none",
-                                      borderRadius: "50%",
-                                      width: "20px",
-                                      height: "20px",
-                                      cursor: "pointer",
-                                      fontSize: "0.8rem",
-                                    }}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const updatedMemories = [...memories];
-                                      updatedMemories[i].media.splice(j, 1);
-                                      setMemories(updatedMemories);
-                                    }}
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-                              ))}
-
-                              <input
-                                type="file"
-                                accept="image/*,video/*"
-                                multiple
-                                onClick={(e) => e.stopPropagation()}
-                                onChange={(e) => {
-                                  if (!e.target.files || e.target.files.length === 0) return;
-                                  const updatedMemories = [...memories];
-                                  updatedMemories[i].media = [
-                                    ...(updatedMemories[i].media || []),
-                                    ...Array.from(e.target.files),
-                                  ];
-                                  setMemories(updatedMemories);
-                                }}
-                              />
-                            </>
-                          ) : (
-                            <>
-                              {mem.reflection && <p style={{ color: "#040404ff" }}>{mem.reflection}</p>}
-                              {mem.media?.map((file, j) => (
-                                <div key={j} style={{ marginTop: "6px" }}>
-                                  {file.type.startsWith("image") ? (
-                                    <img
-                                      src={URL.createObjectURL(file)}
-                                      alt=""
-                                      style={{ width: "100%", borderRadius: "8px" }}
-                                    />
-                                  ) : (
-                                    <video
-                                      src={URL.createObjectURL(file)}
-                                      controls
-                                      style={{ width: "100%", borderRadius: "8px" }}
-                                    />
-                                  )}
-                                </div>
-                              ))}
-                            </>
-                          )}
+                          {/* Media */}
+                          {mem.media?.map((file, j) => (
+                            <div key={j} style={{ marginTop: "6px" }}>
+                              {file.type.startsWith("image") ? (
+                                <img
+                                  src={file.url}
+                                  alt=""
+                                  style={{ width: "100%", borderRadius: "8px" }}
+                                />
+                              ) : (
+                                <video
+                                  src={file.url}
+                                  controls
+                                  style={{ width: "100%", borderRadius: "8px" }}
+                                />
+                              )}
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>
